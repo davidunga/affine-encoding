@@ -1,1 +1,1 @@
-# affine-encoding
+# Affine encoding in the motor system

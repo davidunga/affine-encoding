@@ -1,25 +1,14 @@
 import os
 from motorneural.datasets.hatsopoulos import HatsoData
-from motorneural.motor import KinData
 from motorneural.data import DataSummary
 import numpy as np
 from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
-from dataclasses import dataclass
 from scipy.ndimage import gaussian_filter1d, median_filter
 import json
 from kinematics import calc_kinematics
 
-segments_dir = "./segments_data"
-
-@dataclass
-class Segment:
-
-    ix: int
-    trial_ix: int
-    slc: slice
-    kin: KinData
-    S: np.ndarray
+from segments.segment import Segment, segments_dir, show_segment
 
 
 def dump_segments(data_summary: DataSummary, seg_cfg: dict, segs: list[Segment], json_file: str = None):
@@ -49,50 +38,7 @@ def dump_segments(data_summary: DataSummary, seg_cfg: dict, segs: list[Segment],
     return json_file
 
 
-def load_segments(json_file):
-    obj = json.load(open(segments_dir + os.path.sep + json_file, "r"))
-    segs = []
-    for s in obj["segs"]:
-        segs.append(Segment(ix=s['ix'], trial_ix=s['trial_ix'], slc=slice(*s['slc']),
-                            kin=KinData.from_json(s['kin']), S=np.array(s['S'])))
-    del obj["segs"]
-
-    data_summary = DataSummary(**obj['data_summary'])
-    print(f"Loaded {len(segs)} segments from {len(set(s.trial_ix for s in segs))} trials, for data: {data_summary}")
-
-    return segs, data_summary, obj['seg_cfg']
-
-
-def show_segment(s: Segment, kins=None):
-    if kins is None:
-        kins = ["spd0", "spd1", "spd2", "crv2"]
-    mosaic = [["X", "NEURAL"] + kins[:len(kins) // 2], ["X", "NEURAL"] + kins[len(kins) // 2:]]
-    _, axs = plt.subplot_mosaic(mosaic)
-    plt.gcf().set_size_inches(16, 8)
-    for m in axs:
-        if m == "X":
-            axs[m].plot(s.kin[m][:, 0], s.kin[m][:, 1], "k.-")
-            axs[m].axis("equal")
-        elif m == "NEURAL":
-            axs[m].imshow(s.S, cmap="hot")
-        else:
-            axs[m].plot(s.kin.t, s.kin[m], "g.-")
-            axs[m].set_title(m)
-    plt.show()
-
-
-default_seg_cfg = {
-    "min_crv": 1 / 50,
-    "max_crv": 1 / .5,
-    "smooth_dur": .05,
-    "seg_dur_sec": .2
-}
-
-
-def collect_segments(data, rand_seed=0, seg_cfg=None, dump=True):
-
-    if not seg_cfg:
-        seg_cfg = default_seg_cfg
+def collect_segments(data, seg_cfg: dict, rand_seed=0, dump=True):
 
     min_crv = seg_cfg["min_crv"]
     max_crv = seg_cfg["max_crv"]
@@ -176,8 +122,14 @@ def collect_segments(data, rand_seed=0, seg_cfg=None, dump=True):
 
 
 if __name__ == "__main__":
+    seg_cfg = {
+        "min_crv": 1 / 50,
+        "max_crv": 1 / .5,
+        "smooth_dur": .05,
+        "seg_dur_sec": .1
+    }
     for dataset in ("TP_RJ", "TP_RS"):
         print("Loading data..")
         data = HatsoData.make("~/data/hatsopoulos", dataset, lag=.1, bin_sz=.01, kin_fnc=calc_kinematics)
         print("Making segments..")
-        collect_segments(data)
+        collect_segments(data, seg_cfg)

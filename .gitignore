@@ -3,6 +3,6 @@
 *.pyc
 build/
 *.egg-info/
-models/
+resources/models/
 
-segments_data/
+resources/segments_data/
