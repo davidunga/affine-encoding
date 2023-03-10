@@ -1,0 +1,8 @@
+
+.idea/
+*.pyc
+build/
+*.egg-info/
+models/
+
+segments_data/
